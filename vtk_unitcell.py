@@ -16,7 +16,7 @@ def VTK_CELLTYPE(count):
 
 def points(family,a,b,c,alpha,beta,gamma):
   return {
-  'cubic' : np.hstack((
+  'cubic' : np.sqrt(2.)*np.hstack((
                 np.array([
                           np.cos(-square),
                           np.sin(-square),
@@ -278,7 +278,7 @@ if family == 'hexagonal' and args.c is None:
 if   args.quaternion is not None:
   rotation = damask.Rotation.fromQuaternion(args.quaternion)
 elif args.axisangle is not None:
-  rotation = damask.Rotation.fromAxisAngle(args.axisangle,degrees=args.degrees)
+  rotation = damask.Rotation.fromAxisAngle(args.axisangle,degrees=args.degrees,normalise=True)
 elif args.euler is not None:
   rotation = damask.Rotation.fromEulers(args.euler,degrees=args.degrees)
 else:
