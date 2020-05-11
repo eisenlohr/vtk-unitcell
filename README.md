@@ -1,6 +1,8 @@
 # vtk_unitcell
 Generate crystallographic lattice unit cells to be visualized with VTK.
 
+![](examples/hexagonal_hcp_19.png)
+
 ```
 usage: vtk_unitcell.py [-h]
                        [--quaternion q p1 p2 p3 | --axisangle a1 a2 a3 angle | --euler phi1 Phi phi2]
@@ -41,7 +43,3 @@ optional arguments:
   --degrees             angles are given in degrees
 
 ```
-
-![](examples/hexagonal_hcp_19.png)
-
-
