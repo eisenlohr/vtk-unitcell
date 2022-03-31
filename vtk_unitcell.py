@@ -2,50 +2,70 @@
 
 import numpy as np
 import argparse
-import damask                                                                             # see https://damask.mpie.de for installation instructions
+import damask                                                                   # see https://damask.mpie.de for installation instructions
 
-hexagon = np.radians(np.array([0,60,120,180,240,300],dtype=float))
-square  = np.radians(np.array([45,135,225,315],dtype=float))
+hexagon = np.linspace(0,2*np.pi,6,endpoint=False)
+square  = np.linspace(0,2*np.pi,4,endpoint=False)+np.pi/4
 
 def VTK_CELLTYPE(count):
-  try:
-    type = [1,3,5][count-1]
-  except IndexError:
-    type = 7
-  return type
+    try:
+        type = [1,3,5][count-1]
+    except IndexError:
+        type = 7
+    return type
 
 def points(family,a,b,c,alpha,beta,gamma):
-  return {
-  'cubic' : np.sqrt(2.)*np.hstack((
+    return {
+    'cubic' : np.sqrt(2.)*np.hstack((
                 np.array([
                           np.cos(-square),
                           np.sin(-square),
                           np.zeros(len(square)),
                         ]),
-                np.array([                          
+                np.array([
                           np.cos(square),
                           np.sin(square),
                           np.ones(len(square))*np.sqrt(2.),
                         ])
                         )).T,
-  'hexagonal' : np.hstack((
+    'tetragonal' : np.sqrt(2.)*np.hstack((
+                np.array([
+                          np.cos(-square),
+                          np.sin(-square),
+                          np.zeros(len(square)),
+                        ]),
+                np.array([
+                          np.cos(square),
+                          np.sin(square),
+                          np.ones(len(square))*np.sqrt(2.)*c/a,
+                        ])
+                        )).T,
+    'hexagonal' : np.hstack((
                 np.array([[0,0,0]]).T,
                 np.array([
                           np.cos(-hexagon),
                           np.sin(-hexagon),
                           np.zeros(len(hexagon)),
                         ]),
-                np.array([                          
+                np.array([
                           np.cos(hexagon),
                           np.sin(hexagon),
                           np.ones(len(hexagon))*c/a,
                         ]),
                 np.array([[0,0,1]]).T*c/a,
                         )).T,
-  }[family]
+    }[family]
 
 unitcell = {
   'cubic' : [
+             [0,1,2,3],
+             [0,3,4,7],
+             [3,2,5,4],
+             [2,1,6,5],
+             [1,0,7,6],
+             [4,5,6,7],
+            ],
+  'tetragonal' : [
              [0,1,2,3],
              [0,3,4,7],
              [3,2,5,4],
@@ -105,7 +125,7 @@ slipgeometry = {
                            [1,5],           # 6 a2-a1
                            [5,3],           # 7 a3-a2
                            [3,1],           # 8 a1-a3
-                           # <c+a> 
+                           # <c+a>
                            [0, 7],          #  9  a1 + c
                            [0, 8],          # 10 -a3 + c
                            [0, 9],          # 11  a2 + c
@@ -139,7 +159,7 @@ slipgeometry = {
                            [ 3, 1, 8,10],
                            [ 2, 6, 9,11],
                      ],
-                     
+
          }
 }
 
@@ -206,7 +226,8 @@ slipsystems = {
 }
 
 
-parser = argparse.ArgumentParser(description='VTK model of oriented unitcell')
+parser = argparse.ArgumentParser(description='VTK model of oriented unitcell',
+                                 formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
 group = parser.add_mutually_exclusive_group(required=False)
 group.add_argument('--quaternion',dest='quaternion',
@@ -265,26 +286,24 @@ parser.add_argument('--degrees', dest='degrees', action='store_true',
 
 args = parser.parse_args()
 
-family = args.family.lower()
+family  = args.family.lower()
 lattice = args.family.lower()+':'+args.lattice.lower()
 position = np.array(args.position)
 systems = [] if args.slipsystems is None else list(map(lambda x: int(x)-1,args.slipsystems.split(',')))
 
-if family == 'cubic':
-  args.b = args.c = args.a
-if family == 'hexagonal' and args.c is None:
-  args.c = np.sqrt(8./3.)
-
 if   args.quaternion is not None:
-  rotation = damask.Rotation.fromQuaternion(args.quaternion)
+    rotation = damask.Rotation.from_quaternion(args.quaternion)
 elif args.axisangle is not None:
-  rotation = damask.Rotation.fromAxisAngle(args.axisangle,degrees=args.degrees,normalise=True)
+    rotation = damask.Rotation.from_axis_angle(args.axisangle,degrees=args.degrees,normalise=True)
 elif args.euler is not None:
-  rotation = damask.Rotation.fromEulers(args.euler,degrees=args.degrees)
+    rotation = damask.Rotation.from_Euler_angles(args.euler,degrees=args.degrees)
 else:
-  rotation = damask.Rotation()
+    rotation = damask.Rotation()
 
-thePoints = points(family,args.a,args.b,args.c,args.alpha,args.beta,args.gamma)
+thePoints = points(family,*(damask.Crystal(lattice=family[0]+'P',
+                                           a=args.a,b=args.b,c=args.c,
+                                           alpha=args.alpha,beta=args.beta,gamma=args.gamma,
+                                           degrees=args.degrees).parameters))
 centerOfGravity = np.mean(thePoints,axis=0)
 
 print('\n'.join([
@@ -294,7 +313,7 @@ print('\n'.join([
   'DATASET UNSTRUCTURED_GRID',
   'POINTS {} float'.format(len(thePoints)),
   ]+
-  list(map(lambda x: '{} {} {}'.format(*(position+args.scaling*(rotation.inversed()*x))),thePoints-centerOfGravity))  # orientation is a passive rotation; here an active rotation is needed
+  list(map(lambda x: '{} {} {}'.format(*(position+args.scaling*(~rotation@x))),thePoints-centerOfGravity))  # orientation is a passive rotation; here an active rotation is needed
   ))
 
 datacount = 0
@@ -325,17 +344,17 @@ for system in systems:
     polys.append(' '.join(map(str,[l]+poly)))
     types.append(VTK_CELLTYPE(l))
     datacount += 1+1
-    polys.append('1 {}'.format(poly[-1]))
+    polys.append(f'1 {poly[-1]}')
     types.append(VTK_CELLTYPE(1))
 
 print('\n'.join([
-  'CELLS {} {}'.format(len(polys),datacount),
+  f'CELLS {len(polys)} {datacount}',
   ]+
   polys
   ))
 
 print('\n'.join([
-  'CELL_TYPES {}'.format(len(polys)),
+  f'CELL_TYPES {len(polys)}',
   ]+
   list(map(str,types))
   ))
