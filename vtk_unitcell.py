@@ -294,7 +294,7 @@ systems = [] if args.slipsystems is None else list(map(lambda x: int(x)-1,args.s
 if   args.quaternion is not None:
     rotation = damask.Rotation.from_quaternion(args.quaternion)
 elif args.axisangle is not None:
-    rotation = damask.Rotation.from_axis_angle(args.axisangle,degrees=args.degrees,normalise=True)
+    rotation = damask.Rotation.from_axis_angle(args.axisangle,degrees=args.degrees,normalize=True)
 elif args.euler is not None:
     rotation = damask.Rotation.from_Euler_angles(args.euler,degrees=args.degrees)
 else:
