@@ -4,13 +4,14 @@ Generate crystallographic lattice unit cells to be visualized with VTK.
 ![](examples/hexagonal_hcp_19.png)
 
 ```
-usage: vtk_unitcell.py [-h]
+usage: vtk-unitcell.py [-h]
                        [--quaternion q p1 p2 p3 | --axisangle a1 a2 a3 angle | --euler phi1 Phi phi2]
                        [--family {cubic,tetragonal,hexagonal}]
                        [--lattice {p,i,f,hcp}] [--slipsystems SLIPSYSTEMS]
                        [--plane] [--direction] [--no-unitcell]
-                       [--position x y z] [--scaling SCALING] [-a A] [-b B]
-                       [-c C] [--alpha ALPHA] [--beta BETA] [--gamma GAMMA]
+                       [--position x y z] [--scaling SCALING]
+                       [-a A] [-b B] [-c C]
+                       [--alpha ALPHA] [--beta BETA] [--gamma GAMMA]
                        [--degrees]
 
 VTK model of oriented unitcell
